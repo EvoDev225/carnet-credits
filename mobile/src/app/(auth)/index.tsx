@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { StatusBar } from "expo-status-bar";
 import {
     Image,
     KeyboardAvoidingView,
@@ -81,7 +82,7 @@ export default function Login() {
                             className="absolute -top-[122px] left-0 right-0 items-center"
                         >
                             <Image
-                                source={require("../../../assets/images/ecureuil.png")}
+                                source={require("../../../assets/images/mascotte.png")}
                                 className="h-[130px] w-[117px]"
                                 resizeMode="contain"
                             />
