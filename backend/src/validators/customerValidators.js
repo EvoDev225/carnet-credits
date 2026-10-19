@@ -45,6 +45,7 @@ const listQuerySchema = z.object({
         .max(50, { message: "La limite maximale est 50" })
         .default(20),
     sort: z.enum(["name", "-name", "balance", "-balance"]).default("name"),
+    status: z.enum(["all", "debt", "settled"]).default("all")
 });
 
 module.exports = { createCustomerSchema, updateCustomerSchema, listQuerySchema };

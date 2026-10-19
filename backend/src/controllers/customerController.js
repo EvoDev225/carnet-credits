@@ -17,9 +17,11 @@ const createCustomer = async (req, res, next) => {
 
 const listCustomers = async (req, res, next) => {
     try {
-        const { search, page, limit, sort } = req.validated.query;
+        const { search, page, limit, sort,status } = req.validated.query;
 
         const filter = { shop: req.user.shop };
+        if (status === "debt") filter.balance = { $gt: 0 };
+        if (status === "settled") filter.balance = 0;
         if (search) {
             filter.name = { $regex: escapeRegex(search), $options: "i" };
         }
@@ -40,7 +42,7 @@ const listCustomers = async (req, res, next) => {
             Customer.countDocuments(filter),
         ]);
 
-        return res.status(200).json({ items, page, limit, total });
+        return res.status(200).json({ items, page, limit, total,status });
     } catch (error) {
         next(error);
     }
