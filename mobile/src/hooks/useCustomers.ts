@@ -1,0 +1,24 @@
+import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
+import { api } from "../lib/api";
+import type { Customer, CustomerStatus, Paginated } from "../lib/types";
+
+export function useCustomers({ search, status }: { search: string; status: CustomerStatus }) {
+    return useInfiniteQuery<Paginated<Customer>>({
+        queryKey: ["customers", { search, status }],
+        queryFn: ({ pageParam }) => {
+            let url = "/api/customers?page=" + pageParam + "&limit=20&sort=name";
+            if (search.length > 0) {
+                url += "&search=" + encodeURIComponent(search);
+            }
+            if (status !== "all") {
+                url += "&status=" + status;
+            }
+            return api.get<Paginated<Customer>>(url);
+        },
+        initialPageParam: 1,
+        getNextPageParam: (lastPage) => {
+            return lastPage.page * lastPage.limit < lastPage.total ? lastPage.page + 1 : undefined;
+        },
+        placeholderData: keepPreviousData,
+    });
+}
