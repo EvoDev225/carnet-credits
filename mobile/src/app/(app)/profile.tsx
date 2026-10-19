@@ -32,8 +32,8 @@ export default function ProfileScreen() {
                     <Text className="font-jakarta text-navy">
                         {user.role === "owner" ? "Propriétaire" : "Collaborateur"}
                     </Text>
-                </View>
-                <View className="mt-5">
+                </View> 
+                <View className="mt-5 w-full">
                     <Button title="Se déconnecter" onPress={signOut} variant="secondary" />
                 </View>
             </View>

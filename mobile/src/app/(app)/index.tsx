@@ -25,7 +25,7 @@ export default function CustomersScreen() {
     const [searchInput, setSearchInput] = useState("");
     const [status, setStatus] = useState<CustomerStatus>("all");
     const debouncedSearch = useDebounce(searchInput.trim(), 300);
-
+    const [refreshing, setRefreshing] = useState(false);
     const isOwner = user?.role === "owner";
     const customers = useCustomers({ search: debouncedSearch, status });
     const dashboard = useDashboard(isOwner);
@@ -33,6 +33,17 @@ export default function CustomersScreen() {
     if (!user) {
         return null;
     }
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        try {
+            await Promise.all([
+                customers.refetch(),
+                isOwner ? dashboard.refetch() : Promise.resolve(),
+            ]);
+        } finally {
+            setRefreshing(false);
+        }
+    };
 
     const items = customers.data?.pages.flatMap((page) => page.items) ?? [];
 
@@ -100,13 +111,8 @@ export default function CustomersScreen() {
                     }
                 }}
                 onEndReachedThreshold={0.4}
-                refreshing={customers.isRefetching && !customers.isFetchingNextPage}
-                onRefresh={() => {
-                    customers.refetch();
-                    if (isOwner) {
-                        dashboard.refetch();
-                    }
-                }}
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
                 contentContainerStyle={{ paddingBottom: 24 }}
             />
         </View>

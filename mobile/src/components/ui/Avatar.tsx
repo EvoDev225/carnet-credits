@@ -9,7 +9,7 @@ export default function Avatar({ name, size = 44 }: { name: string; size?: numbe
             className="items-center justify-center bg-avatar"
             style={{ width: size, height: size, borderRadius: size / 2 }}
         >
-            <Text className="font-jakarta-bold text-navy">{getInitials(name)}</Text>
+            <Text style={{ fontSize: size * 0.36 }} className="font-jakarta-bold text-navy">{getInitials(name)}</Text>
         </View>
     );
 }

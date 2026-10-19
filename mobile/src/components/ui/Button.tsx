@@ -21,7 +21,7 @@ export default function Button({
 
     return (
         <Pressable
-            onPress={onPress}
+            onPress={() => onPress()}
             disabled={isDisabled}
             accessibilityRole="button"
             accessibilityState={{ disabled: isDisabled, busy: loading }}

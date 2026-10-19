@@ -15,7 +15,7 @@ function SkeletonRow() {
 
 export default function ListSkeleton({ count = 6 }: { count?: number }) {
     return (
-        <View accessibilityLabel="Chargement en cours">
+        <View accessible accessibilityLabel="Chargement en cours">
             {Array.from({ length: count }, (_, index) => (
                 <SkeletonRow key={index} />
             ))}

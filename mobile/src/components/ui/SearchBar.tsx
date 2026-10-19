@@ -31,7 +31,7 @@ export default function SearchBar({
                 accessibilityLabel={placeholder}
                 onFocus={() => setFocused(true)}
                 onBlur={() => setFocused(false)}
-                className="flex-1 font-jakarta text-base text-ink"
+                className="flex-1 py-0 font-jakarta text-base text-ink"
             />
             {value.length > 0 ? (
                 <Pressable
