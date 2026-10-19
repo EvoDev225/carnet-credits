@@ -10,7 +10,7 @@ import {
 import { api, setUnauthorizedHandler } from "../lib/api";
 import { getToken, setToken, deleteToken } from "../lib/storage";
 import { ApiError, type AuthResponse, type User } from "../lib/types";
-
+import {queryClient} from "../lib/queryClient"
 type AuthContextType = {
     user: User | null;
     isLoading: boolean;
@@ -60,7 +60,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const signOut = useCallback(async () => {
         await deleteToken();
+        queryClient.clear();
         setUser(null);
+        
     }, []);
 
     const signIn = useCallback(async (phone: string, password: string) => {

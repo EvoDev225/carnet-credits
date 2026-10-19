@@ -3,4 +3,5 @@ export const colors = {
     brand: "#0B6E78",
     muted: "#5B6B7A",
     white: "#FFFFFF",
+    line: "#E1E6EB"
 };
