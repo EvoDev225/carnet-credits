@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const customerSchema = new mongoose.Schema(
     {
         name: { type: String, required: true, trim: true, maxlength: 100 },
+        // Normalisé comme pour User (chiffres uniquement, indicatif inclus)
         phone: { type: String, trim: true, maxlength: 20 },
         note: { type: String, trim: true, maxlength: 500 },
         balance: {
@@ -20,5 +21,6 @@ const customerSchema = new mongoose.Schema(
 );
 
 customerSchema.index({ shop: 1, name: 1 });
+customerSchema.index({ shop: 1, phone: 1 });
 
 module.exports = mongoose.model("Customer", customerSchema);

@@ -1,23 +1,25 @@
 const z = require("zod");
+const { phoneField } = require("./commonValidators");
 
-// Règles de base, réutilisées pour la création et la modification
+const nameField = z
+    .string({ message: "Le nom est requis" })
+    .trim()
+    .min(1, { message: "Le nom est requis" })
+    .max(100, { message: "Le nom ne doit pas dépasser 100 caractères" });
+
+const noteField = z
+    .string({ message: "La note doit être une chaîne" })
+    .trim()
+    .max(500, { message: "La note ne doit pas dépasser 500 caractères" });
+
+// "" ou null = pas de numéro / pas de note (permet d'effacer en modification)
+const clearable = (field) =>
+    z.preprocess((value) => (typeof value === "string" && value.trim() === "" ? null : value), field.nullable());
+
 const createCustomerSchema = z.object({
-    name: z
-        .string()
-        .trim()
-        .min(1, { message: "Le nom est requis" })
-        .max(100, { message: "Le nom ne doit pas dépasser 100 caractères" }),
-    phone: z
-        .string()
-        .trim()
-        .min(6, { message: "Le numéro doit contenir au moins 6 caractères" })
-        .max(20, { message: "Le numéro ne doit pas dépasser 20 caractères" })
-        .optional(),
-    note: z
-        .string()
-        .trim()
-        .max(500, { message: "La note ne doit pas dépasser 500 caractères" })
-        .optional(),
+    name: nameField,
+    phone: clearable(phoneField).optional(),
+    note: clearable(noteField).optional(),
 });
 
 // Mêmes règles, tous les champs optionnels, mais au moins un champ obligatoire
