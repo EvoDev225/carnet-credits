@@ -2,6 +2,8 @@
 module.exports = {
   content: ["./app/**/*.{js,jsx,ts,tsx}", "./src/**/*.{js,jsx,ts,tsx}"],
   presets: [require("nativewind/preset")],
+  // App en thème clair uniquement ; "class" évite une erreur de NativeWind sur Expo web
+  darkMode: "class",
   theme: {
     extend: {
       colors: {
