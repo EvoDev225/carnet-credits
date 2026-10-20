@@ -81,7 +81,8 @@ const listTransactions = async (req, res, next) => {
                 .sort({ createdAt: -1, _id: -1 })
                 .skip((page - 1) * limit)
                 .limit(limit)
-                .populate("createdBy", "name"),
+                .populate("createdBy", "name")
+                .populate("cancelledBy", "name"),
             Transaction.countDocuments(filter)
         ]);
 

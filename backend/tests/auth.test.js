@@ -242,3 +242,71 @@ describe("GET /api/auth/me et validité des tokens (S3)", () => {
         expect((await request(app).get("/api/auth/me").set(authHeader(relog.body.token))).status).toBe(200);
     });
 });
+
+describe("Boutique dans les réponses d'authentification", () => {
+    test("register, login et /me renvoient { id, name } de la boutique", async () => {
+        const body = validRegistration();
+        const registered = await register(body);
+        expect(registered.body.user.shop).toEqual({ id: expect.any(String), name: "Boutique Awa" });
+
+        const logged = await login({ phone: body.phone, password: body.password });
+        expect(logged.body.user.shop).toEqual(registered.body.user.shop);
+
+        const me = await request(app).get("/api/auth/me").set(authHeader(logged.body.token));
+        expect(me.body.user.shop).toEqual(registered.body.user.shop);
+    });
+});
+
+describe("PATCH /api/auth/password", () => {
+    const changePassword = (token, body) =>
+        request(app).patch("/api/auth/password").set(authHeader(token)).send(body);
+
+    test("change le mot de passe, renvoie un nouveau token et révoque les anciens", async () => {
+        const { token, localPhone } = await createOwner();
+        const otherSession = (await login({ phone: localPhone, password: DEFAULT_PASSWORD })).body.token;
+
+        const res = await changePassword(token, { currentPassword: DEFAULT_PASSWORD, newPassword: "tout-nouveau-123" });
+        expect(res.status).toBe(200);
+        expect(res.body.token).toEqual(expect.any(String));
+        expect(res.body.user.shop.name).toBe("Boutique Test");
+
+        expect((await request(app).get("/api/auth/me").set(authHeader(res.body.token))).status).toBe(200);
+        expect((await request(app).get("/api/auth/me").set(authHeader(token))).status).toBe(401);
+        expect((await request(app).get("/api/auth/me").set(authHeader(otherSession))).status).toBe(401);
+
+        expect((await login({ phone: localPhone, password: DEFAULT_PASSWORD })).status).toBe(401);
+        expect((await login({ phone: localPhone, password: "tout-nouveau-123" })).status).toBe(200);
+    });
+
+    test("mot de passe actuel faux : 400 (pas 401, qui déconnecterait l'app)", async () => {
+        const { token } = await createOwner();
+        const res = await changePassword(token, { currentPassword: "faux-mot-de-passe", newPassword: "tout-nouveau-123" });
+        expect(res.status).toBe(400);
+        expect(res.body.errors[0].field).toBe("currentPassword");
+        expect((await request(app).get("/api/auth/me").set(authHeader(token))).status).toBe(200);
+    });
+
+    test("nouveau mot de passe trop court ou identique à l'actuel : 400", async () => {
+        const { token } = await createOwner();
+        expect((await changePassword(token, { currentPassword: DEFAULT_PASSWORD, newPassword: "court" })).status).toBe(400);
+        const same = await changePassword(token, { currentPassword: DEFAULT_PASSWORD, newPassword: DEFAULT_PASSWORD });
+        expect(same.status).toBe(400);
+        expect(same.body.errors[0].field).toBe("newPassword");
+    });
+
+    test("un collaborateur peut changer son propre mot de passe", async () => {
+        const { shop } = await createOwner();
+        const { token } = await createStaff(shop);
+        const res = await changePassword(token, { currentPassword: DEFAULT_PASSWORD, newPassword: "tout-nouveau-123" });
+        expect(res.status).toBe(200);
+    });
+
+    test("bloqué après 5 échecs (S1)", async () => {
+        const { token } = await createOwner();
+        for (let i = 0; i < 5; i += 1) {
+            await changePassword(token, { currentPassword: "faux", newPassword: "tout-nouveau-123" });
+        }
+        const res = await changePassword(token, { currentPassword: DEFAULT_PASSWORD, newPassword: "tout-nouveau-123" });
+        expect(res.status).toBe(429);
+    });
+});

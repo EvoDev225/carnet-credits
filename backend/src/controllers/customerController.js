@@ -40,7 +40,13 @@ const listCustomers = async (req, res, next) => {
         if (status === "debt") filter.balance = mongoose.trusted({ $gt: 0 });
         if (status === "settled") filter.balance = 0;
         if (search) {
-            filter.name = mongoose.trusted({ $regex: escapeRegex(search), $options: "i" });
+            const byName = { name: mongoose.trusted({ $regex: escapeRegex(search), $options: "i" }) };
+            // Au moins 3 chiffres : on cherche aussi dans les numéros (stockés en chiffres seuls)
+            const digits = search.replace(/\D/g, "");
+            filter.$or =
+                digits.length >= 3
+                    ? [byName, { phone: mongoose.trusted({ $regex: digits }) }]
+                    : [byName];
         }
 
         const descending = sort.startsWith("-");

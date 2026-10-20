@@ -107,6 +107,7 @@ describe("Opérations et soldes", () => {
         expect(res.body).toMatchObject({ page: 2, limit: 1, total: 2, balance: 1000 });
         expect(res.body.items).toHaveLength(1);
         expect(res.body.items[0].createdBy).toMatchObject({ name: owner.owner.name });
+        expect(res.body.items[0].cancelledBy).toMatchObject({ name: owner.owner.name });
     });
 });
 

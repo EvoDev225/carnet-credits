@@ -80,6 +80,17 @@ describe("Validation et défense en profondeur (S10)", () => {
         expect(res.body.total).toBe(1);
     });
 
+    test("la recherche porte aussi sur le numéro, quel que soit son format", async () => {
+        await createCustomer(owner.shop, { name: "Fatou", phone: "2250708091011" });
+        await createCustomer(owner.shop, { name: "Awa", phone: "2250102030405" });
+        for (const search of ["0708", "07 08 09", "+225 07 08", "091011"]) {
+            const res = await as("get", `/api/customers?search=${encodeURIComponent(search)}`);
+            expect(res.body.items.map((c) => c.name)).toEqual(["Fatou"]);
+        }
+        // Moins de 3 chiffres : recherche par nom uniquement
+        expect((await as("get", "/api/customers?search=07")).body.total).toBe(0);
+    });
+
     test("un corps de plus de 10 ko est refusé (413)", async () => {
         const res = await as("post", "/api/customers").send({ name: "A", note: "x".repeat(11 * 1024) });
         expect(res.status).toBe(413);
