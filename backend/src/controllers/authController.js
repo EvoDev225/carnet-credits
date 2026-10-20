@@ -1,9 +1,11 @@
-const bcryptjs = require("bcryptjs");
 const User = require("../models/User");
 const Shop = require("../models/Shop");
 const genererToken = require("../utils/genererToken");
+const { hashPassword, verifyPassword } = require("../utils/password");
+const withTransaction = require("../utils/withTransaction");
 
 const INVALID_CREDENTIALS = "Identifiants incorrects";
+const PHONE_TAKEN = "Ce numéro est déjà utilisé";
 
 // Liste blanche : seuls ces champs sortent vers le client (jamais passwordHash)
 const publicUser = (user) => ({
@@ -20,91 +22,63 @@ const buildAuthResponse = (user) => ({
     user: publicUser(user),
 });
 
-const register = async (req, res) => {
-    let shop; // déclarés avant le try pour être visibles dans le catch
-    let user;
-
+// Le corps est déjà validé et nettoyé par validate(registerSchema)
+const register = async (req, res, next) => {
     try {
-        const { shopName, name, phone, password } = req.body;
+        const { shopName, name, phone, password } = req.validated.body;
 
-        // 1. Types d'abord : trim() plante sur autre chose qu'une chaîne
-        if ([shopName, name, phone, password].some((v) => typeof v !== "string")) {
-            return res.status(400).json({ message: "Tous les champs sont requis !" });
+        // Numéro déjà pris ? On vérifie AVANT de hacher (bcrypt est lent)
+        if (await User.exists({ phone })) {
+            return res.status(409).json({ message: PHONE_TAKEN });
         }
 
-        // 2. Nettoyage (jamais sur le mot de passe)
-        const cleanShopName = shopName.trim();
-        const cleanName = name.trim();
-        const cleanPhone = phone.trim();
+        const passwordHash = await hashPassword(password);
 
-        if (!cleanShopName || !cleanName || !cleanPhone || !password) {
-            return res.status(400).json({ message: "Tous les champs sont requis !" });
-        }
-        if (password.length < 6) {
-            return res
-                .status(400)
-                .json({ message: "Le mot de passe doit contenir au moins 6 caractères !" });
-        }
-
-        // 3. Numéro déjà pris ? On vérifie AVANT de hacher (bcrypt est lent)
-        if (await User.exists({ phone: cleanPhone })) {
-            return res.status(409).json({ message: "Ce numéro est déjà utilisé" });
-        }
-
-        // 4. Hachage
-        const passwordHash = await bcryptjs.hash(password, 10);
-
-        // 5. Création : la boutique, puis le propriétaire
-        shop = await Shop.create({ name: cleanShopName });
-        user = await User.create({
-            name: cleanName,
-            phone: cleanPhone,
-            passwordHash,
-            role: "owner", // écrit en dur : jamais lu dans req.body
-            shop: shop._id,
+        // Boutique et propriétaire créés ensemble : jamais de boutique orpheline
+        const user = await withTransaction(async (session) => {
+            const [shop] = await Shop.create([{ name: shopName }], { session });
+            const [owner] = await User.create(
+                [
+                    {
+                        name,
+                        phone,
+                        passwordHash,
+                        role: "owner", // écrit en dur : jamais lu dans req.body
+                        shop: shop._id,
+                    },
+                ],
+                { session }
+            );
+            return owner;
         });
 
         return res.status(201).json(buildAuthResponse(user));
     } catch (error) {
-        // Boutique créée mais pas d'utilisateur : on évite l'orpheline
-        if (shop && !user) {
-            await Shop.findByIdAndDelete(shop._id);
-        }
         // Deux inscriptions simultanées : seul l'index unique les départage
         if (error.code === 11000) {
-            return res.status(409).json({ message: "Ce numéro est déjà utilisé" });
+            return res.status(409).json({ message: PHONE_TAKEN });
         }
-        console.error(error);
-        return res.status(500).json({ message: "Erreur serveur" });
+        next(error);
     }
 };
 
-const login = async (req, res) => {
+const login = async (req, res, next) => {
     try {
-        const { phone, password } = req.body;
+        const { phone, password } = req.validated.body;
 
-        if (typeof phone !== "string" || typeof password !== "string") {
-            return res.status(400).json({ message: "Tous les champs sont requis !" });
-        }
-        const cleanPhone = phone.trim();
-        if (!cleanPhone || !password) {
-            return res.status(400).json({ message: "Tous les champs sont requis !" });
-        }
+        const user = await User.findOne({ phone }).select("+passwordHash");
 
-        const user = await User.findOne({ phone: cleanPhone }).select("+passwordHash");
-        if (!user) {
-            return res.status(401).json({ message: INVALID_CREDENTIALS });
-        }
+        // Toujours un appel à bcrypt, même si le numéro est inconnu :
+        // le temps de réponse ne doit pas révéler quels numéros sont inscrits
+        const isMatch = await verifyPassword(password, user?.passwordHash);
 
-        const isMatch = await bcryptjs.compare(password, user.passwordHash);
-        if (!isMatch || user.active === false) {
+        if (!user || !isMatch || user.active === false) {
             return res.status(401).json({ message: INVALID_CREDENTIALS });
         }
 
         return res.status(200).json(buildAuthResponse(user));
     } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: "Erreur serveur" });
+        next(error);
     }
 };
 

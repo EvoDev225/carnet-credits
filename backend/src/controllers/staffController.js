@@ -1,5 +1,7 @@
-const bcryptjs = require("bcryptjs");
 const User = require("../models/User");
+const { hashPassword } = require("../utils/password");
+
+const PHONE_TAKEN = "Ce numéro est déjà utilisé";
 
 const publicStaff = (user) => ({
     id: user._id,
@@ -15,10 +17,10 @@ const createStaff = async (req, res, next) => {
         const { name, phone, password } = req.validated.body;
 
         if (await User.exists({ phone })) {
-            return res.status(409).json({ message: "Ce numéro est déjà utilisé" });
+            return res.status(409).json({ message: PHONE_TAKEN });
         }
 
-        const passwordHash = await bcryptjs.hash(password, 10);
+        const passwordHash = await hashPassword(password);
         const staff = await User.create({
             name,
             phone,
@@ -29,6 +31,9 @@ const createStaff = async (req, res, next) => {
 
         return res.status(201).json({ message: "Collaborateur créé", staff: publicStaff(staff) });
     } catch (error) {
+        if (error.code === 11000) {
+            return res.status(409).json({ message: PHONE_TAKEN });
+        }
         next(error);
     }
 };
@@ -48,16 +53,21 @@ const listStaff = async (req, res, next) => {
 const updateStaff = async (req, res, next) => {
     try {
         const { name, active, password } = req.validated.body;
-        const update = {};
+        const update = { $set: {} };
 
-        if (name !== undefined) update.name = name;
-        if (active !== undefined) update.active = active;
-        if (password !== undefined) update.passwordHash = await bcryptjs.hash(password, 10);
+        if (name !== undefined) update.$set.name = name;
+        if (active !== undefined) update.$set.active = active;
+        if (password !== undefined) update.$set.passwordHash = await hashPassword(password);
+
+        // Nouveau mot de passe ou désactivation : les sessions ouvertes sont révoquées
+        if (password !== undefined || active === false) {
+            update.$inc = { tokenVersion: 1 };
+        }
 
         const staff = await User.findOneAndUpdate(
             { _id: req.params.id, shop: req.user.shop, role: "staff" },
-            { $set: update },
-            { new: true, runValidators: true }
+            update,
+            { returnDocument: "after", runValidators: true }
         );
 
         if (!staff) {

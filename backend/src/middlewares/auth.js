@@ -1,6 +1,5 @@
-
-const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { verifierToken } = require("../utils/genererToken");
 
 const authenticate = async (req, res, next) => {
     // 1. Vérifier l'en-tête Authorization
@@ -22,17 +21,17 @@ const authenticate = async (req, res, next) => {
 
     let payload;
 
-    // 2. Vérifier le token JWT
+    // 2. Vérifier le token JWT (signature, expiration, émetteur, destinataire)
     try {
-        payload = jwt.verify(token, process.env.JWT_SECRET,{ algorithms: ["HS256"] });
+        payload = verifierToken(token);
     } catch (error) {
         return res.status(401).json({
             message: "Token invalide ou expiré.",
         });
     }
 
-    // Vérifier la présence de l'identifiant utilisateur
-    if (!payload.sub) {
+    // Vérifier la présence de l'identifiant utilisateur et de la version
+    if (typeof payload.sub !== "string" || !/^[a-f\d]{24}$/i.test(payload.sub) || typeof payload.ver !== "number") {
         return res.status(401).json({
             message: "Token invalide.",
         });
@@ -48,7 +47,14 @@ const authenticate = async (req, res, next) => {
             });
         }
 
-        // 4. Attacher l'utilisateur à la requête
+        // 4. Token émis avant un changement de mot de passe ou une désactivation : révoqué
+        if (user.tokenVersion !== payload.ver) {
+            return res.status(401).json({
+                message: "Session expirée, reconnecte-toi.",
+            });
+        }
+
+        // 5. Attacher l'utilisateur à la requête
         req.user = user;
 
         return next();
