@@ -1,13 +1,30 @@
+const mongoose = require("mongoose");
 const Customer = require("../models/Customer");
 const Transaction = require("../models/Transaction");
 // Échappe les caractères spéciaux d'une recherche avant de l'utiliser dans une regex
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+// Les champs à null (numéro ou note effacés) sont retirés du document
+const buildUpdate = (fields) => {
+    const update = {};
+    for (const [key, value] of Object.entries(fields)) {
+        if (value === null) {
+            update.$unset = { ...update.$unset, [key]: "" };
+        } else {
+            update.$set = { ...update.$set, [key]: value };
+        }
+    }
+    return update;
+};
+
 const createCustomer = async (req, res, next) => {
     try {
+        const { name, phone, note } = req.validated.body;
         const customer = await Customer.create({
-            ...req.validated.body,
-            shop: req.user.shop, // après le spread : le corps ne peut pas l'écraser
+            name,
+            phone: phone ?? undefined,
+            note: note ?? undefined,
+            shop: req.user.shop, // lu dans le token, jamais dans le corps
         });
         return res.status(201).json({ message: "Client créé avec succès", customer });
     } catch (error) {
@@ -20,10 +37,10 @@ const listCustomers = async (req, res, next) => {
         const { search, page, limit, sort,status } = req.validated.query;
 
         const filter = { shop: req.user.shop };
-        if (status === "debt") filter.balance = { $gt: 0 };
+        if (status === "debt") filter.balance = mongoose.trusted({ $gt: 0 });
         if (status === "settled") filter.balance = 0;
         if (search) {
-            filter.name = { $regex: escapeRegex(search), $options: "i" };
+            filter.name = mongoose.trusted({ $regex: escapeRegex(search), $options: "i" });
         }
 
         const descending = sort.startsWith("-");
@@ -67,10 +84,11 @@ const getCustomer = async (req, res, next) => {
 
 const updateCustomer = async (req, res, next) => {
     try {
+        // Seuls les champs du schéma zod arrivent ici : ni balance, ni shop
         const customer = await Customer.findOneAndUpdate(
             { _id: req.params.id, shop: req.user.shop },
-            req.validated.body,
-            { new: true, runValidators: true }
+            buildUpdate(req.validated.body),
+            { returnDocument: "after", runValidators: true }
         );
 
         if (!customer) {

@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Customer = require("../models/Customer");
 const Transaction = require("../models/Transaction");
 
@@ -19,7 +20,7 @@ const getDashboard = async (req, res, next) => {
                     }
                 }
             ]),
-            Customer.find({ shop, balance: { $gt: 0 } })
+            Customer.find({ shop, balance: mongoose.trusted({ $gt: 0 }) })
                 .sort({ balance: -1, _id: 1 })
                 .limit(5)
                 .select("name phone balance"),

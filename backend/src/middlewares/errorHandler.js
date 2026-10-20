@@ -1,3 +1,5 @@
+const HttpError = require("../utils/httpError");
+
 const notFound = (req, res, next) => {
     return res.status(404).json({ message: "Route introuvable" });
 };
@@ -6,6 +8,11 @@ const errorHandler = (err, req, res, next) => {
     // Si une réponse est déjà partie, on laisse Express fermer proprement
     if (res.headersSent) {
         return next(err);
+    }
+
+    // Erreur métier levée volontairement (souvent dans une transaction)
+    if (err instanceof HttpError) {
+        return res.status(err.status).json({ message: err.message });
     }
 
     // Corps JSON mal formé (faute du client, pas du serveur)
@@ -34,9 +41,10 @@ const errorHandler = (err, req, res, next) => {
         return res.status(409).json({ message: "Cette donnée existe déjà" });
     }
 
-    // Tout le reste : le détail va dans les logs, jamais dans la réponse
-    console.error(err);
-    return res.status(500).json({ message: "Erreur serveur" });
+    // Tout le reste : le détail (et la stack) va dans les logs, jamais dans la réponse.
+    // L'identifiant de requête permet de retrouver la ligne de log correspondante.
+    req.log.error({ err }, "Erreur non gérée");
+    return res.status(500).json({ message: "Erreur serveur", requestId: req.id });
 };
 
 module.exports = { notFound, errorHandler };
