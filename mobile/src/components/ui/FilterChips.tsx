@@ -19,7 +19,7 @@ export default function FilterChips<T extends string>({
                         onPress={() => onChange(option.value)}
                         accessibilityRole="button"
                         accessibilityState={{ selected }}
-                        className={`min-h-[44px] items-center justify-center rounded-[10px] border px-4 ${selected ? "border-navy bg-navy" : "border-line bg-white"
+                        className={`min-h-[44px] items-center justify-center rounded-chip border px-4 ${selected ? "border-navy bg-navy" : "border-line bg-surface"
                             }`}
                     >
                         <Text

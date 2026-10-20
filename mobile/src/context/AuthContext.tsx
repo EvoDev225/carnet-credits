@@ -9,7 +9,7 @@ import {
 } from "react";
 import { api, setUnauthorizedHandler } from "../lib/api";
 import { getToken, setToken, deleteToken } from "../lib/storage";
-import { ApiError, type AuthResponse, type User } from "../lib/types";
+import { ApiError, type AuthResponse, type Shop, type User } from "../lib/types";
 import {queryClient} from "../lib/queryClient"
 
 export type SignUpInput = {
@@ -25,6 +25,7 @@ type AuthContextType = {
     signIn: (phone: string, password: string) => Promise<void>;
     signUp: (input: SignUpInput) => Promise<void>;
     changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+    renameShop: (name: string) => Promise<void>;
     signOut: () => Promise<void>;
 };
 
@@ -96,6 +97,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await applyAuth(data);
     }, [applyAuth]);
 
+    // Propriétaire uniquement : le nouveau nom est reporté dans l'utilisateur connecté
+    const renameShop = useCallback(async (name: string) => {
+        const data = await api.patch<{ shop: Shop }>("/api/shop", { name });
+        setUser((current) => (current ? { ...current, shop: data.shop } : current));
+    }, []);
+
     useEffect(() => {
         setUnauthorizedHandler(() => {
             signOut();
@@ -106,8 +113,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [signOut]);
 
     const value = useMemo(
-        () => ({ user, isLoading, signIn, signUp, changePassword, signOut }),
-        [user, isLoading, signIn, signUp, changePassword, signOut]
+        () => ({ user, isLoading, signIn, signUp, changePassword, renameShop, signOut }),
+        [user, isLoading, signIn, signUp, changePassword, renameShop, signOut]
     );
 
     return (

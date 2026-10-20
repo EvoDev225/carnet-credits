@@ -55,6 +55,8 @@ export type Paginated<T> = {
 
 export type CustomerStatus = "all" | "debt" | "settled";
 
+export type CustomerSort = "name" | "-balance";
+
 export type TransactionType = "DEBT" | "PAYMENT";
 
 export type Transaction = {

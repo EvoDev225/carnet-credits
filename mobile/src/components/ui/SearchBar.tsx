@@ -16,7 +16,7 @@ export default function SearchBar({
 
     return (
         <View
-            className={`h-12 flex-row items-center gap-2 rounded-xl border bg-white px-3 ${focused ? "border-brand" : "border-line"
+            className={`min-h-12 flex-row items-center gap-2 rounded-control border bg-surface px-3 ${focused ? "border-brand" : "border-line"
                 }`}
         >
             <Ionicons name="search" size={20} color={colors.muted} />

@@ -1,5 +1,6 @@
-import { ActivityIndicator, Pressable, Text } from "react-native";
+import { ActivityIndicator, Text } from "react-native";
 import { colors } from "../../lib/theme";
+import PressableScale from "./PressableScale";
 
 type ButtonProps = {
     title: string;
@@ -7,6 +8,13 @@ type ButtonProps = {
     variant?: "primary" | "secondary" | "danger";
     loading?: boolean;
     disabled?: boolean;
+    accessibilityHint?: string;
+};
+
+const variants = {
+    primary: { container: "bg-brand", text: "text-white", spinner: colors.white },
+    secondary: { container: "border border-line bg-surface", text: "text-navy", spinner: colors.navy },
+    danger: { container: "border border-debt bg-surface", text: "text-debt", spinner: colors.debt },
 };
 
 export default function Button({
@@ -15,33 +23,28 @@ export default function Button({
     variant = "primary",
     loading = false,
     disabled = false,
+    accessibilityHint,
 }: ButtonProps) {
     const isDisabled = disabled || loading;
-    const isPrimary = variant === "primary";
-    const containerClass = isPrimary
-        ? "bg-brand"
-        : variant === "danger"
-            ? "border border-debt bg-white"
-            : "border border-line bg-white";
-    const textClass = isPrimary ? "text-white" : variant === "danger" ? "text-debt" : "text-navy";
+    const style = variants[variant];
 
     return (
-        <Pressable
+        <PressableScale
             onPress={() => onPress()}
             disabled={isDisabled}
             accessibilityRole="button"
+            accessibilityLabel={title}
+            accessibilityHint={accessibilityHint}
             accessibilityState={{ disabled: isDisabled, busy: loading }}
-            className={`min-h-[48px] flex-row items-center justify-center rounded-xl px-6 ${containerClass} ${isDisabled ? "opacity-50" : "active:opacity-80"}`}
+            className={`min-h-[48px] flex-row items-center justify-center rounded-control px-6 py-3 ${style.container} ${
+                isDisabled ? "opacity-50" : ""
+            }`}
         >
             {loading ? (
-                <ActivityIndicator color={isPrimary ? colors.white : variant === "danger" ? colors.debt : colors.navy} />
+                <ActivityIndicator color={style.spinner} />
             ) : (
-                <Text
-                    className={`font-jakarta-bold text-base ${textClass}`}
-                >
-                    {title}
-                </Text>
+                <Text className={`text-center font-jakarta-bold text-base ${style.text}`}>{title}</Text>
             )}
-        </Pressable>
+        </PressableScale>
     );
 }

@@ -11,6 +11,11 @@ export function getErrorMessage(error: unknown): string {
     return "Une erreur est survenue, réessaie";
 }
 
+// Serveur injoignable ou trop lent (pas de réponse HTTP)
+export function isOfflineError(error: unknown): boolean {
+    return error instanceof ApiError && error.status === 0;
+}
+
 // Erreurs de validation de l'API (errors[]) → { champ: message }
 export function getFieldErrors(error: unknown): Record<string, string> {
     if (!(error instanceof ApiError)) {

@@ -1,12 +1,20 @@
 import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
-import type { Customer, CustomerStatus, Paginated } from "../lib/types";
+import type { Customer, CustomerSort, CustomerStatus, Paginated } from "../lib/types";
 
-export function useCustomers({ search, status }: { search: string; status: CustomerStatus }) {
+export function useCustomers({
+    search,
+    status,
+    sort = "name",
+}: {
+    search: string;
+    status: CustomerStatus;
+    sort?: CustomerSort;
+}) {
     return useInfiniteQuery<Paginated<Customer>>({
-        queryKey: ["customers", { search, status }],
+        queryKey: ["customers", { search, status, sort }],
         queryFn: ({ pageParam }) => {
-            let url = "/api/customers?page=" + pageParam + "&limit=20&sort=name";
+            let url = "/api/customers?page=" + pageParam + "&limit=20&sort=" + encodeURIComponent(sort);
             if (search.length > 0) {
                 url += "&search=" + encodeURIComponent(search);
             }

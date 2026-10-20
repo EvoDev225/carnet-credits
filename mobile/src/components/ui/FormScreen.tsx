@@ -17,7 +17,7 @@ export default function FormScreen({ children }: { children: ReactNode }) {
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="on-drag"
             >
-                <View className="gap-4 rounded-2xl border border-line bg-white p-5">{children}</View>
+                <View className="gap-4 rounded-card border border-line bg-surface p-5">{children}</View>
             </ScrollView>
         </KeyboardAvoidingView>
     );
