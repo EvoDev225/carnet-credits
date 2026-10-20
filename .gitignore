@@ -1,0 +1,9 @@
+# Skills d'agents installés localement (outils de développement, hors projet)
+.agents/
+.claude/skills/
+skills-lock.json
+
+# Fichiers d'environnement : jamais versionnés (voir les .env.example)
+.env
+.env.*
+!.env.example
