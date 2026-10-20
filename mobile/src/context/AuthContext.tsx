@@ -11,10 +11,20 @@ import { api, setUnauthorizedHandler } from "../lib/api";
 import { getToken, setToken, deleteToken } from "../lib/storage";
 import { ApiError, type AuthResponse, type User } from "../lib/types";
 import {queryClient} from "../lib/queryClient"
+
+export type SignUpInput = {
+    shopName: string;
+    name: string;
+    phone: string;
+    password: string;
+};
+
 type AuthContextType = {
     user: User | null;
     isLoading: boolean;
     signIn: (phone: string, password: string) => Promise<void>;
+    signUp: (input: SignUpInput) => Promise<void>;
+    changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
     signOut: () => Promise<void>;
 };
 
@@ -62,14 +72,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await deleteToken();
         queryClient.clear();
         setUser(null);
-        
+    }, []);
+
+    // Commun à la connexion, l'inscription et au changement de mot de passe
+    const applyAuth = useCallback(async (data: AuthResponse) => {
+        await setToken(data.token);
+        setUser(data.user);
     }, []);
 
     const signIn = useCallback(async (phone: string, password: string) => {
         const data = await api.post<AuthResponse>("/api/auth/login", { phone, password }, false);
-        await setToken(data.token);
-        setUser(data.user);
-    }, []);
+        await applyAuth(data);
+    }, [applyAuth]);
+
+    const signUp = useCallback(async (input: SignUpInput) => {
+        const data = await api.post<AuthResponse>("/api/auth/register", input, false);
+        await applyAuth(data);
+    }, [applyAuth]);
+
+    // L'API révoque les anciens tokens et en renvoie un nouveau
+    const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+        const data = await api.patch<AuthResponse>("/api/auth/password", { currentPassword, newPassword });
+        await applyAuth(data);
+    }, [applyAuth]);
 
     useEffect(() => {
         setUnauthorizedHandler(() => {
@@ -81,8 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [signOut]);
 
     const value = useMemo(
-        () => ({ user, isLoading, signIn, signOut }),
-        [user, isLoading, signIn, signOut]
+        () => ({ user, isLoading, signIn, signUp, changePassword, signOut }),
+        [user, isLoading, signIn, signUp, changePassword, signOut]
     );
 
     return (

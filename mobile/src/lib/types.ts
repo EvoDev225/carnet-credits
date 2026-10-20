@@ -1,11 +1,16 @@
 export type Role = "owner" | "staff";
 
+export type Shop = {
+    id: string;
+    name: string;
+};
+
 export type User = {
     id: string;
     name: string;
     phone: string;
     role: Role;
-    shop: string;
+    shop: Shop;
 };
 
 export type AuthResponse = {
@@ -50,9 +55,47 @@ export type Paginated<T> = {
 
 export type CustomerStatus = "all" | "debt" | "settled";
 
+export type TransactionType = "DEBT" | "PAYMENT";
+
+export type Transaction = {
+    _id: string;
+    customer: string;
+    type: TransactionType;
+    amount: number;
+    description?: string;
+    cancelled: boolean;
+    cancelledAt?: string;
+    createdAt: string;
+    createdBy: { _id: string; name: string } | null;
+    cancelledBy?: { _id: string; name: string } | null;
+};
+
+export type TransactionsPage = Paginated<Transaction> & { balance: number };
+
+export type TransactionMutationResponse = {
+    message: string;
+    transaction: Transaction;
+    balance: number;
+};
+
+export type CustomerInput = {
+    name: string;
+    phone: string;
+    note: string;
+};
+
+export type Staff = {
+    id: string;
+    name: string;
+    phone: string;
+    role: "staff";
+    active: boolean;
+    createdAt: string;
+};
+
 export type DashboardTransaction = {
     _id: string;
-    type: "DEBT" | "PAYMENT";
+    type: TransactionType;
     amount: number;
     cancelled: boolean;
     createdAt: string;

@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { Text, TextInput, View, type TextInputProps } from "react-native";
+import { useState, type Ref } from "react";
+import { Text, TextInput, View, type TextInputInstance, type TextInputProps } from "react-native";
 import { colors } from "../../lib/theme";
 
 type InputProps = TextInputProps & {
+    ref?: Ref<TextInputInstance>;
     label: string;
     error?: string;
 };

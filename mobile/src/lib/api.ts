@@ -5,6 +5,10 @@ const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 if (!BASE_URL) {
     throw new Error("EXPO_PUBLIC_API_URL n'est pas défini (fichier .env)");
 }
+// En production, le token et les données ne doivent jamais circuler en clair
+if (!__DEV__ && !BASE_URL.startsWith("https://")) {
+    throw new Error("EXPO_PUBLIC_API_URL doit commencer par https:// dans un build de production");
+}
 
 const TIMEOUT_MS = 15000;
 

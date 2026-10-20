@@ -4,7 +4,7 @@ import { colors } from "../../lib/theme";
 type ButtonProps = {
     title: string;
     onPress: () => void;
-    variant?: "primary" | "secondary";
+    variant?: "primary" | "secondary" | "danger";
     loading?: boolean;
     disabled?: boolean;
 };
@@ -18,6 +18,12 @@ export default function Button({
 }: ButtonProps) {
     const isDisabled = disabled || loading;
     const isPrimary = variant === "primary";
+    const containerClass = isPrimary
+        ? "bg-brand"
+        : variant === "danger"
+            ? "border border-debt bg-white"
+            : "border border-line bg-white";
+    const textClass = isPrimary ? "text-white" : variant === "danger" ? "text-debt" : "text-navy";
 
     return (
         <Pressable
@@ -25,15 +31,13 @@ export default function Button({
             disabled={isDisabled}
             accessibilityRole="button"
             accessibilityState={{ disabled: isDisabled, busy: loading }}
-            className={`min-h-[48px] flex-row items-center justify-center rounded-xl px-6 ${isPrimary ? "bg-brand" : "border border-line bg-white"
-                } ${isDisabled ? "opacity-50" : "active:opacity-80"}`}
+            className={`min-h-[48px] flex-row items-center justify-center rounded-xl px-6 ${containerClass} ${isDisabled ? "opacity-50" : "active:opacity-80"}`}
         >
             {loading ? (
-                <ActivityIndicator color={isPrimary ? colors.white : colors.navy} />
+                <ActivityIndicator color={isPrimary ? colors.white : variant === "danger" ? colors.debt : colors.navy} />
             ) : (
                 <Text
-                    className={`font-jakarta-bold text-base ${isPrimary ? "text-white" : "text-navy"
-                        }`}
+                    className={`font-jakarta-bold text-base ${textClass}`}
                 >
                     {title}
                 </Text>
