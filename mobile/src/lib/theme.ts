@@ -1,12 +1,11 @@
-// Mêmes valeurs que tailwind.config.js, pour les props qui n'acceptent pas de classes
-export const colors = {
-    navy: "#0F2A43",
-    brand: "#0B6E78",
-    canvas: "#F4F6F8",
-    ink: "#1B2733",
-    muted: "#5B6B7A",
-    white: "#FFFFFF",
-    line: "#E1E6EB",
-    debt: "#B42318",
-    ok: "#1A7F4B",
-};
+import tokens from "../theme/tokens";
+
+// Valeurs issues de src/theme/tokens.js (même source que tailwind.config.js)
+export const colors = tokens.colors;
+export const radius = tokens.radius;
+export const spacing = tokens.spacing;
+export const fontSize = tokens.fontSize;
+export const fonts = tokens.fonts;
+
+// Chiffres à chasse fixe : les montants restent alignés d'une ligne à l'autre
+export const tabularNums = { fontVariant: ["tabular-nums" as const] };
