@@ -137,6 +137,7 @@ L'API vérifie ces variables au démarrage et s'arrête avec un message clair si
 | Supprimer un client (solde nul et sans historique) | ✅ | ❌ |
 | Tableau de bord (total des impayés, stats du mois) | ✅ | ❌ |
 | Gérer l'équipe (ajouter, désactiver, réinitialiser un mot de passe) | ✅ | ❌ |
+| Renommer la boutique | ✅ | ❌ |
 | Changer son propre mot de passe | ✅ | ✅ |
 
 Ces règles sont appliquées **par l'API** (403), l'app ne fait que masquer les boutons. Toutes les données sont cloisonnées par boutique : un utilisateur ne voit jamais les clients d'une autre boutique (404).
@@ -154,11 +155,22 @@ Ces règles sont appliquées **par l'API** (403), l'app ne fait que masquer les 
 
 ---
 
+## Design (mobile)
+
+- **Tokens** : une seule source, `mobile/src/theme/tokens.js` (couleurs, rayons, espacements, tailles de police). Elle est lue à la fois par `tailwind.config.js` (classes NativeWind) et par `src/lib/theme.ts` (props qui n'acceptent pas de classes). Rouge `debt` = dette, vert `payment` = remboursement / soldé, toujours accompagnés d'un libellé ou d'une icône.
+- **Composants** (`src/components/ui/`) : `ScreenHeader`, `Card`, `Button`, `IconButton`, `Fab`, `Badge`, `SegmentedControl`, `AmountInput`, `PasswordInput`, `ConfirmDialog` (`useConfirm`), `Toast` (`useToast`), `SectionHeader`, `ListSkeleton`, `AnimatedAmount`, `EmptyState`, `ErrorState`.
+- **Animations** (Reanimated 4) : apparition des lignes, transitions de liste, effet d'appui, squelette pulsé, solde qui compte jusqu'à sa nouvelle valeur. Toutes respectent le réglage « Réduire les animations ». Retour haptique (`expo-haptics`) sur succès et erreur.
+- **Accessibilité** : contrastes vérifiés WCAG AA (voir l'en-tête de `tokens.js`), zones tactiles ≥ 44 px, libellés sur tous les boutons-icônes, hauteurs minimales plutôt que fixes (grandes polices).
+- **Thème** : clair uniquement (`userInterfaceStyle: "light"`).
+
+---
+
 ## Tests et vérifications
 
 ```bash
 cd backend && npm test          # jest + supertest + MongoDB en mémoire (replica set), sans base externe
 cd backend && npm audit --omit=dev
+cd mobile && npm test           # jest-expo : formatage des montants, téléphones et dates
 cd mobile && npx tsc --noEmit && npx expo lint && npx expo-doctor
 ```
 
