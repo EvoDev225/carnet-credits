@@ -12,6 +12,7 @@ const customerRoutes = require("./routes/customerRoutes");
 const transactionRoutes = require("./routes/transactionRoutes");
 const staffRoutes = require("./routes/staffRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
+const shopRoutes = require("./routes/shopRoutes");
 const { notFound, errorHandler } = require("./middlewares/errorHandler");
 
 const env = loadEnv();
@@ -75,6 +76,7 @@ app.use("/api/customers", customerRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/staff", staffRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/shop", shopRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
