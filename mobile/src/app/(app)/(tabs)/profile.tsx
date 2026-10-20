@@ -1,9 +1,11 @@
-import { Text, View } from "react-native";
+import Constants from "expo-constants";
+import { router } from "expo-router";
+import { Alert, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Avatar from "../../components/ui/Avatar";
-import Button from "../../components/ui/Button";
-import { useAuth } from "../../context/AuthContext";
-import { formatPhone } from "../../lib/format";
+import Avatar from "../../../components/ui/Avatar";
+import Button from "../../../components/ui/Button";
+import { useAuth } from "../../../context/AuthContext";
+import { formatPhone } from "../../../lib/format";
 
 export default function ProfileScreen() {
     const insets = useSafeAreaInsets();
@@ -13,8 +15,15 @@ export default function ProfileScreen() {
         return null;
     }
 
+    const confirmSignOut = () => {
+        Alert.alert("Se déconnecter ?", "Tu devras saisir à nouveau ton mot de passe.", [
+            { text: "Annuler", style: "cancel" },
+            { text: "Se déconnecter", style: "destructive", onPress: () => signOut() },
+        ]);
+    };
+
     return (
-        <View className="flex-1 bg-canvas">
+        <ScrollView className="flex-1 bg-canvas" contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
             <View
                 className="h-[160px] rounded-b-[28px] bg-navy px-5"
                 style={{ paddingTop: insets.top + 16 }}
@@ -32,11 +41,23 @@ export default function ProfileScreen() {
                     <Text className="font-jakarta text-navy">
                         {user.role === "owner" ? "Propriétaire" : "Collaborateur"}
                     </Text>
-                </View> 
-                <View className="mt-5 w-full">
-                    <Button title="Se déconnecter" onPress={signOut} variant="secondary" />
+                </View>
+                <Text className="mt-4 font-jakarta-semibold text-sm text-muted">Boutique</Text>
+                <Text className="font-jakarta-bold text-base text-ink">{user.shop.name}</Text>
+
+                <View className="mt-5 w-full gap-3">
+                    <Button
+                        title="Changer mon mot de passe"
+                        onPress={() => router.push("/password")}
+                        variant="secondary"
+                    />
+                    <Button title="Se déconnecter" onPress={confirmSignOut} variant="danger" />
                 </View>
             </View>
-        </View>
+
+            <Text className="mt-6 text-center font-jakarta text-xs text-muted">
+                {`Carnet de crédits · version ${Constants.expoConfig?.version ?? "?"}`}
+            </Text>
+        </ScrollView>
     );
 }

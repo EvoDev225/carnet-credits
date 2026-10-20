@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { StatusBar } from "expo-status-bar";
 import {
     Image,
     KeyboardAvoidingView,
@@ -8,6 +7,7 @@ import {
     Text,
     View,
 } from "react-native";
+import { Link } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
@@ -17,7 +17,9 @@ import { ApiError } from "../../lib/types";
 function getLoginErrorMessage(err: unknown): string {
     if (err instanceof ApiError) {
         if (err.status === 401) return "Téléphone ou mot de passe incorrect";
-        if (err.status === 0) return err.message;
+        // 429 : trop d'essais, l'API indique combien de temps attendre
+        if (err.status === 429 || err.status === 0) return err.message;
+        if (err.status === 400) return err.details[0]?.message ?? err.message;
     }
     return "Une erreur est survenue, réessaie";
 }
@@ -83,7 +85,7 @@ export default function Login() {
                         >
                             <Image
                                 source={require("../../../assets/images/mascotte.png")}
-                                className="h-[130px] w-[117px]"
+                                style={{ width: 117, height: 130 }}
                                 resizeMode="contain"
                             />
                         </View>
@@ -126,6 +128,18 @@ export default function Login() {
 
                             <Button title="Se connecter" onPress={handleLogin} loading={loading} />
                         </View>
+                    </View>
+
+                    <View className="mt-6 items-center gap-1">
+                        <Text className="font-jakarta text-muted">Pas encore de compte ?</Text>
+                        <Link href="/register" asChild>
+                            <Text
+                                accessibilityRole="link"
+                                className="min-h-[44px] px-4 py-2 font-jakarta-bold text-base text-brand"
+                            >
+                                Créer ma boutique
+                            </Text>
+                        </Link>
                     </View>
                 </View>
             </ScrollView>

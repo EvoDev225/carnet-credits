@@ -1,8 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
-import { colors } from "../../lib/theme";
+import { useAuth } from "../../../context/AuthContext";
+import { colors } from "../../../lib/theme";
 
 export default function AppTabs() {
+    const { user } = useAuth();
+    const isOwner = user?.role === "owner";
+
     return (
         <Tabs
             screenOptions={{
@@ -26,6 +30,22 @@ export default function AppTabs() {
                     ),
                 }}
             />
+            {/* Onglet invisible et inaccessible pour un collaborateur */}
+            <Tabs.Protected guard={isOwner}>
+                <Tabs.Screen
+                    name="team"
+                    options={{
+                        title: "Équipe",
+                        tabBarIcon: ({ focused }) => (
+                            <Ionicons
+                                name={focused ? "briefcase" : "briefcase-outline"}
+                                size={24}
+                                color={focused ? colors.brand : colors.muted}
+                            />
+                        ),
+                    }}
+                />
+            </Tabs.Protected>
             <Tabs.Screen
                 name="profile"
                 options={{

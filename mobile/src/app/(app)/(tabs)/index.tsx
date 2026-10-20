@@ -1,18 +1,21 @@
+import { router } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, FlatList, View } from "react-native";
-import CustomerRow from "../../components/customers/CustomerRow";
-import HeroHeader from "../../components/home/HeroHeader";
-import EmptyState from "../../components/ui/EmptyState";
-import ErrorState from "../../components/ui/ErrorState";
-import FilterChips from "../../components/ui/FilterChips";
-import ListSkeleton from "../../components/ui/ListSkeleton";
-import SearchBar from "../../components/ui/SearchBar";
-import { useAuth } from "../../context/AuthContext";
-import { useCustomers } from "../../hooks/useCustomers";
-import { useDashboard } from "../../hooks/useDashboard";
-import { useDebounce } from "../../hooks/useDebounce";
-import { colors } from "../../lib/theme";
-import type { CustomerStatus } from "../../lib/types";
+import CustomerRow from "../../../components/customers/CustomerRow";
+import HeroHeader from "../../../components/home/HeroHeader";
+import EmptyState from "../../../components/ui/EmptyState";
+import ErrorState from "../../../components/ui/ErrorState";
+import Fab from "../../../components/ui/Fab";
+import FilterChips from "../../../components/ui/FilterChips";
+import ListSkeleton from "../../../components/ui/ListSkeleton";
+import SearchBar from "../../../components/ui/SearchBar";
+import { useAuth } from "../../../context/AuthContext";
+import { useCustomers } from "../../../hooks/useCustomers";
+import { useDashboard } from "../../../hooks/useDashboard";
+import { useDebounce } from "../../../hooks/useDebounce";
+import { getErrorMessage } from "../../../lib/errors";
+import { colors } from "../../../lib/theme";
+import type { CustomerStatus } from "../../../lib/types";
 
 const statusOptions: { value: CustomerStatus; label: string }[] = [
     { value: "all", label: "Tous" },
@@ -45,6 +48,8 @@ export default function CustomersScreen() {
         }
     };
 
+    const openNewCustomer = () => router.push("/customers/new");
+
     const items = customers.data?.pages.flatMap((page) => page.items) ?? [];
 
     const header = (
@@ -60,7 +65,7 @@ export default function CustomersScreen() {
                 <SearchBar
                     value={searchInput}
                     onChangeText={setSearchInput}
-                    placeholder="Rechercher un client"
+                    placeholder="Rechercher un nom ou un numéro"
                 />
                 <FilterChips options={statusOptions} value={status} onChange={setStatus} />
             </View>
@@ -72,7 +77,7 @@ export default function CustomersScreen() {
             <ListSkeleton />
         </View>
     ) : customers.isError ? (
-        <ErrorState message={customers.error.message} onRetry={customers.refetch} />
+        <ErrorState message={getErrorMessage(customers.error)} onRetry={customers.refetch} />
     ) : debouncedSearch.length > 0 || status !== "all" ? (
         <EmptyState
             title="Aucun résultat"
@@ -82,6 +87,8 @@ export default function CustomersScreen() {
         <EmptyState
             title="Aucun client pour l'instant"
             message="Les clients que tu ajouteras apparaîtront ici"
+            actionLabel="Ajouter mon premier client"
+            onAction={openNewCustomer}
         />
     );
 
@@ -92,7 +99,10 @@ export default function CustomersScreen() {
                 keyExtractor={(item) => item._id}
                 renderItem={({ item }) => (
                     <View className="px-4">
-                        <CustomerRow customer={item} />
+                        <CustomerRow
+                            customer={item}
+                            onPress={() => router.push({ pathname: "/customers/[id]", params: { id: item._id } })}
+                        />
                     </View>
                 )}
                 ListHeaderComponent={header}
@@ -113,8 +123,10 @@ export default function CustomersScreen() {
                 onEndReachedThreshold={0.4}
                 refreshing={refreshing}
                 onRefresh={handleRefresh}
-                contentContainerStyle={{ paddingBottom: 24 }}
+                keyboardDismissMode="on-drag"
+                contentContainerStyle={{ paddingBottom: 96 }}
             />
+            <Fab label="Ajouter un client" onPress={openNewCustomer} />
         </View>
     );
 }
