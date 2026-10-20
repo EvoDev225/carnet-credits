@@ -1,56 +1,64 @@
+const mongoose = require("mongoose");
 const Customer = require("../models/Customer");
 const Transaction = require("../models/Transaction");
+const HttpError = require("../utils/httpError");
+const withTransaction = require("../utils/withTransaction");
 
 const createTransaction = async (req, res, next) => {
     try {
         const { type, amount, description } = req.validated.body;
         const delta = type === "DEBT" ? amount : -amount;
 
-        const filter = { _id: req.params.id, shop: req.user.shop };
-        if (type === "PAYMENT") {
-            filter.balance = { $gte: amount };
+        // Matrice des droits : un remboursement réduit une dette, seul le propriétaire
+        // peut l'enregistrer (limite le risque de fraude interne)
+        if (type === "PAYMENT" && req.user.role !== "owner") {
+            return res.status(403).json({ message: "Seul le propriétaire peut enregistrer un remboursement." });
         }
 
-        const updatedCustomer = await Customer.findOneAndUpdate(
-            filter,
-            { $inc: { balance: delta } },
-            { new: true }
-        );
-
-        if (!updatedCustomer) {
-            const customerExists = await Customer.exists({ _id: req.params.id, shop: req.user.shop });
-            if (!customerExists) {
-                return res.status(404).json({ message: "Client introuvable" });
+        // Solde et opération sont écrits dans la même transaction :
+        // impossible d'avoir l'un sans l'autre, même en cas de panne
+        const result = await withTransaction(async (session) => {
+            const filter = { _id: req.params.id, shop: req.user.shop };
+            if (type === "PAYMENT") {
+                // Condition atomique : le solde ne peut jamais devenir négatif
+                filter.balance = mongoose.trusted({ $gte: amount });
             }
-            return res.status(409).json({ message: "Le remboursement dépasse le solde du client" });
-        }
 
-        let transaction;
-        try {
-            transaction = await Transaction.create({
-                shop: req.user.shop,
-                customer: req.params.id,
-                createdBy: req.user._id,
-                type,
-                amount,
-                description
-            });
-        } catch (createError) {
-            try {
-                await Customer.updateOne(
-                    { _id: req.params.id, shop: req.user.shop },
-                    { $inc: { balance: -delta } }
-                );
-            } catch (rollbackError) {
-                console.error("INCOHÉRENCE : solde modifié sans transaction pour le client " + req.params.id, rollbackError);
+            const updatedCustomer = await Customer.findOneAndUpdate(
+                filter,
+                { $inc: { balance: delta } },
+                { returnDocument: "after", session }
+            );
+
+            if (!updatedCustomer) {
+                const customerExists = await Customer.exists({ _id: req.params.id, shop: req.user.shop }).session(session);
+                if (!customerExists) {
+                    throw new HttpError(404, "Client introuvable");
+                }
+                throw new HttpError(409, "Le remboursement dépasse le solde du client");
             }
-            throw createError;
-        }
+
+            const [transaction] = await Transaction.create(
+                [
+                    {
+                        shop: req.user.shop,
+                        customer: req.params.id,
+                        createdBy: req.user._id,
+                        type,
+                        amount,
+                        description: description || undefined,
+                    },
+                ],
+                { session }
+            );
+
+            return { transaction, balance: updatedCustomer.balance };
+        });
 
         return res.status(201).json({
             message: "Opération enregistrée",
-            transaction,
-            balance: updatedCustomer.balance
+            transaction: result.transaction,
+            balance: result.balance
         });
     } catch (error) {
         next(error);
@@ -89,57 +97,52 @@ const listTransactions = async (req, res, next) => {
     }
 };
 
-
-
 const cancelTransaction = async (req, res, next) => {
     try {
-        const transaction = await Transaction.findOneAndUpdate(
-            { _id: req.params.id, shop: req.user.shop, cancelled: false },
-            { $set: { cancelled: true, cancelledAt: new Date(), cancelledBy: req.user._id } },
-            { new: true }
-        );
-
-        if (!transaction) {
-            const exists = await Transaction.exists({ _id: req.params.id, shop: req.user.shop });
-            if (!exists) {
-                return res.status(404).json({ message: "Opération introuvable" });
-            }
-            return res.status(409).json({ message: "Cette opération est déjà annulée" });
-        }
-
-        const delta = transaction.type === "DEBT" ? -transaction.amount : transaction.amount;
-
-        const filter = { _id: transaction.customer, shop: req.user.shop };
-        if (delta < 0) {
-            filter.balance = { $gte: transaction.amount };
-        }
-
-        const updatedCustomer = await Customer.findOneAndUpdate(
-            filter,
-            { $inc: { balance: delta } },
-            { new: true }
-        );
-
-        if (!updatedCustomer) {
-            await Transaction.updateOne(
-                { _id: transaction._id },
-                { $set: { cancelled: false }, $unset: { cancelledAt: "", cancelledBy: "" } }
+        const result = await withTransaction(async (session) => {
+            const transaction = await Transaction.findOneAndUpdate(
+                { _id: req.params.id, shop: req.user.shop, cancelled: false },
+                { $set: { cancelled: true, cancelledAt: new Date(), cancelledBy: req.user._id } },
+                { returnDocument: "after", session }
             );
-            return res.status(409).json({ message: "Annulation impossible : le solde du client est insuffisant (une partie de cette dette a déjà été remboursée)" });
-        }
+
+            if (!transaction) {
+                const exists = await Transaction.exists({ _id: req.params.id, shop: req.user.shop }).session(session);
+                if (!exists) {
+                    throw new HttpError(404, "Opération introuvable");
+                }
+                throw new HttpError(409, "Cette opération est déjà annulée");
+            }
+
+            const delta = transaction.type === "DEBT" ? -transaction.amount : transaction.amount;
+
+            const filter = { _id: transaction.customer, shop: req.user.shop };
+            if (delta < 0) {
+                filter.balance = mongoose.trusted({ $gte: transaction.amount });
+            }
+
+            const updatedCustomer = await Customer.findOneAndUpdate(
+                filter,
+                { $inc: { balance: delta } },
+                { returnDocument: "after", session }
+            );
+
+            // L'erreur annule aussi le passage de l'opération à "annulée"
+            if (!updatedCustomer) {
+                throw new HttpError(409, "Annulation impossible : le solde du client est insuffisant (une partie de cette dette a déjà été remboursée)");
+            }
+
+            return { transaction, balance: updatedCustomer.balance };
+        });
 
         return res.status(200).json({
             message: "Opération annulée",
-            transaction,
-            balance: updatedCustomer.balance
+            transaction: result.transaction,
+            balance: result.balance
         });
     } catch (error) {
         next(error);
     }
 };
-
-
-
-
 
 module.exports = { createTransaction, listTransactions, cancelTransaction }
