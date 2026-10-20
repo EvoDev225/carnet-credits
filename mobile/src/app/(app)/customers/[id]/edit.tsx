@@ -3,13 +3,15 @@ import { View } from "react-native";
 import CustomerForm from "../../../../components/customers/CustomerForm";
 import ErrorState from "../../../../components/ui/ErrorState";
 import ListSkeleton from "../../../../components/ui/ListSkeleton";
+import { useToast } from "../../../../components/ui/Toast";
 import { useCustomer, useUpdateCustomer } from "../../../../hooks/useCustomer";
-import { getErrorMessage } from "../../../../lib/errors";
+import { hapticError, hapticSuccess } from "../../../../lib/haptics";
 
 export default function EditCustomerScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const customer = useCustomer(id);
     const updateCustomer = useUpdateCustomer(id);
+    const toast = useToast();
 
     if (customer.isPending) {
         return (
@@ -22,7 +24,7 @@ export default function EditCustomerScreen() {
     if (customer.isError) {
         return (
             <View className="flex-1 bg-canvas">
-                <ErrorState message={getErrorMessage(customer.error)} onRetry={customer.refetch} />
+                <ErrorState error={customer.error} onRetry={customer.refetch} />
             </View>
         );
     }
@@ -33,7 +35,16 @@ export default function EditCustomerScreen() {
             submitLabel="Enregistrer"
             isPending={updateCustomer.isPending}
             error={updateCustomer.error}
-            onSubmit={(input) => updateCustomer.mutate(input, { onSuccess: () => router.back() })}
+            onSubmit={(input) =>
+                updateCustomer.mutate(input, {
+                    onSuccess: () => {
+                        hapticSuccess();
+                        toast("Client modifié");
+                        router.back();
+                    },
+                    onError: hapticError,
+                })
+            }
         />
     );
 }

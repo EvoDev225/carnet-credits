@@ -4,8 +4,11 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View, type
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
+import PasswordInput from "../../components/ui/PasswordInput";
+import ScreenHeader from "../../components/ui/ScreenHeader";
 import { useAuth } from "../../context/AuthContext";
 import { getErrorMessage, getFieldErrors } from "../../lib/errors";
+import { hapticError } from "../../lib/haptics";
 
 type Fields = "shopName" | "name" | "phone" | "password" | "confirmation";
 
@@ -49,6 +52,7 @@ export default function Register() {
             // En cas de succès, l'utilisateur est connecté et redirigé automatiquement
             await signUp({ shopName: shopName.trim(), name: name.trim(), phone: phone.trim(), password });
         } catch (err) {
+            hapticError();
             const fields = getFieldErrors(err);
             setFieldErrors(fields);
             if (Object.keys(fields).length === 0) {
@@ -70,19 +74,18 @@ export default function Register() {
                 keyboardDismissMode="on-drag"
                 showsVerticalScrollIndicator={false}
             >
-                <View
-                    className="h-[160px] items-center rounded-b-[28px] bg-navy px-5"
-                    style={{ paddingTop: insets.top + 16 }}
-                >
-                    <Text className="font-jakarta-extrabold text-xl text-white">Carnet de crédits</Text>
-                    <Text className="mt-1 text-center font-jakarta text-sm text-white/70">
-                        Crée ta boutique en une minute
-                    </Text>
-                </View>
+                <ScreenHeader
+                    title="Carnet de crédits"
+                    subtitle="Crée ta boutique en une minute"
+                    align="center"
+                    minHeight={160}
+                />
 
                 <View className="-mt-12 px-6" style={{ paddingBottom: insets.bottom + 24 }}>
-                    <View className="gap-4 rounded-2xl border border-line bg-white p-6">
-                        <Text className="text-center font-jakarta-extrabold text-xl text-navy">Inscription</Text>
+                    <View className="gap-4 rounded-card border border-line bg-surface p-6">
+                        <Text accessibilityRole="header" className="text-center font-jakarta-extrabold text-xl text-navy">
+                            Inscription
+                        </Text>
 
                         <Input
                             label="Nom de la boutique"
@@ -121,27 +124,23 @@ export default function Register() {
                             error={fieldErrors.phone}
                             editable={!loading}
                         />
-                        <Input
+                        <PasswordInput
                             ref={passwordRef}
                             label="Mot de passe"
                             value={password}
                             onChangeText={setPassword}
                             placeholder="8 caractères minimum"
-                            secureTextEntry
-                            autoCapitalize="none"
                             autoComplete="new-password"
                             returnKeyType="next"
                             onSubmitEditing={() => confirmRef.current?.focus()}
                             error={fieldErrors.password}
                             editable={!loading}
                         />
-                        <Input
+                        <PasswordInput
                             ref={confirmRef}
                             label="Confirme le mot de passe"
                             value={confirmation}
                             onChangeText={setConfirmation}
-                            secureTextEntry
-                            autoCapitalize="none"
                             autoComplete="new-password"
                             returnKeyType="go"
                             onSubmitEditing={handleRegister}

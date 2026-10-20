@@ -1,20 +1,27 @@
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Alert, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import Avatar from "../../../components/ui/Avatar";
+import Badge from "../../../components/ui/Badge";
 import Button from "../../../components/ui/Button";
+import { useConfirm } from "../../../components/ui/ConfirmDialog";
 import ErrorState from "../../../components/ui/ErrorState";
 import FormScreen from "../../../components/ui/FormScreen";
-import Input from "../../../components/ui/Input";
 import ListSkeleton from "../../../components/ui/ListSkeleton";
+import PasswordInput from "../../../components/ui/PasswordInput";
+import { useToast } from "../../../components/ui/Toast";
 import { useStaff, useUpdateStaff } from "../../../hooks/useStaff";
 import { getErrorMessage, getFieldErrors } from "../../../lib/errors";
 import { formatPhone } from "../../../lib/format";
+import { hapticError, hapticSuccess } from "../../../lib/haptics";
+import { ApiError } from "../../../lib/types";
 
 export default function StaffScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const staffList = useStaff();
     const updateStaff = useUpdateStaff(id);
+    const confirm = useConfirm();
+    const toast = useToast();
     const [password, setPassword] = useState("");
     const [passwordError, setPasswordError] = useState<string | null>(null);
 
@@ -31,32 +38,36 @@ export default function StaffScreen() {
         return (
             <View className="flex-1 bg-canvas">
                 <ErrorState
-                    message={staffList.isError ? getErrorMessage(staffList.error) : "Collaborateur introuvable"}
+                    error={staffList.isError ? staffList.error : new ApiError(404, "Collaborateur introuvable")}
                     onRetry={staffList.refetch}
                 />
             </View>
         );
     }
 
-    const toggleActive = () => {
+    const toggleActive = async () => {
         const nextActive = !staff.active;
-        Alert.alert(
-            nextActive ? "Réactiver ce collaborateur ?" : "Désactiver ce collaborateur ?",
-            nextActive
+        const accepted = await confirm({
+            title: nextActive ? "Réactiver ce collaborateur ?" : "Désactiver ce collaborateur ?",
+            message: nextActive
                 ? `${staff.name} pourra de nouveau se connecter.`
-                : `${staff.name} sera déconnecté et ne pourra plus se connecter.`,
-            [
-                { text: "Annuler", style: "cancel" },
-                {
-                    text: nextActive ? "Réactiver" : "Désactiver",
-                    style: nextActive ? "default" : "destructive",
-                    onPress: () =>
-                        updateStaff.mutate(
-                            { active: nextActive },
-                            { onError: (error) => Alert.alert("Modification impossible", getErrorMessage(error)) }
-                        ),
+                : `${staff.name} sera déconnecté de tous ses appareils et ne pourra plus se connecter.`,
+            confirmLabel: nextActive ? "Réactiver" : "Désactiver",
+            destructive: !nextActive,
+        });
+        if (!accepted) return;
+        updateStaff.mutate(
+            { active: nextActive },
+            {
+                onSuccess: () => {
+                    hapticSuccess();
+                    toast(nextActive ? `${staff.name} est réactivé` : `${staff.name} est désactivé`);
                 },
-            ]
+                onError: (error) => {
+                    hapticError();
+                    toast(getErrorMessage(error), "error");
+                },
+            }
         );
     };
 
@@ -72,10 +83,13 @@ export default function StaffScreen() {
             {
                 onSuccess: () => {
                     setPassword("");
-                    Alert.alert("Mot de passe réinitialisé", `${staff.name} a été déconnecté de ses appareils.`);
+                    hapticSuccess();
+                    toast(`Mot de passe réinitialisé, ${staff.name} a été déconnecté`);
                 },
-                onError: (error) =>
-                    setPasswordError(getFieldErrors(error).password ?? getErrorMessage(error)),
+                onError: (error) => {
+                    hapticError();
+                    setPasswordError(getFieldErrors(error).password ?? getErrorMessage(error));
+                },
             }
         );
     };
@@ -87,10 +101,12 @@ export default function StaffScreen() {
                 <Avatar name={staff.name} size={64} />
                 <Text className="mt-2 font-jakarta-extrabold text-xl text-navy">{staff.name}</Text>
                 <Text className="font-jakarta text-muted">{formatPhone(staff.phone)}</Text>
-                <View className={`mt-2 rounded-full px-3 py-1 ${staff.active ? "bg-ok/10" : "bg-debt-soft"}`}>
-                    <Text className={`font-jakarta-semibold text-xs ${staff.active ? "text-ok" : "text-debt"}`}>
-                        {staff.active ? "Actif" : "Désactivé"}
-                    </Text>
+                <View className="mt-2">
+                    {staff.active ? (
+                        <Badge tone="payment" icon="checkmark-circle" label="Actif" />
+                    ) : (
+                        <Badge tone="muted" icon="pause-circle" label="Désactivé" />
+                    )}
                 </View>
             </View>
 
@@ -102,14 +118,14 @@ export default function StaffScreen() {
             />
 
             <View className="gap-3 border-t border-line pt-4">
-                <Text className="font-jakarta-bold text-base text-navy">Réinitialiser le mot de passe</Text>
-                <Input
+                <Text accessibilityRole="header" className="font-jakarta-bold text-base text-navy">
+                    Réinitialiser le mot de passe
+                </Text>
+                <PasswordInput
                     label="Nouveau mot de passe"
                     value={password}
                     onChangeText={setPassword}
                     placeholder="8 caractères minimum"
-                    secureTextEntry
-                    autoCapitalize="none"
                     autoComplete="new-password"
                     returnKeyType="done"
                     onSubmitEditing={resetPassword}

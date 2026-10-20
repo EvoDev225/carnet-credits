@@ -12,6 +12,8 @@ import { AuthProvider, useAuth } from "../context/AuthContext";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "../lib/queryClient";
 import { StatusBar } from "expo-status-bar";
+import { ConfirmProvider } from "../components/ui/ConfirmDialog";
+import { ToastProvider } from "../components/ui/Toast";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -28,7 +30,11 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <RootNavigator fontsReady={fontsReady} />
+        <ToastProvider>
+          <ConfirmProvider>
+            <RootNavigator fontsReady={fontsReady} />
+          </ConfirmProvider>
+        </ToastProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

@@ -1,14 +1,17 @@
 import { router } from "expo-router";
 import { useRef, useState } from "react";
-import { Alert, Text, type TextInputInstance } from "react-native";
+import { Text, type TextInputInstance } from "react-native";
 import Button from "../../components/ui/Button";
 import FormScreen from "../../components/ui/FormScreen";
-import Input from "../../components/ui/Input";
+import PasswordInput from "../../components/ui/PasswordInput";
+import { useToast } from "../../components/ui/Toast";
 import { useAuth } from "../../context/AuthContext";
 import { getErrorMessage, getFieldErrors } from "../../lib/errors";
+import { hapticError, hapticSuccess } from "../../lib/haptics";
 
 export default function PasswordScreen() {
     const { changePassword } = useAuth();
+    const toast = useToast();
     const [currentPassword, setCurrentPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [confirmation, setConfirmation] = useState("");
@@ -38,9 +41,11 @@ export default function PasswordScreen() {
         setLoading(true);
         try {
             await changePassword(currentPassword, newPassword);
-            Alert.alert("Mot de passe modifié", "Tes autres appareils ont été déconnectés.");
+            hapticSuccess();
+            toast("Mot de passe modifié, tes autres appareils ont été déconnectés");
             router.back();
         } catch (err) {
+            hapticError();
             const fields = getFieldErrors(err);
             setFieldErrors(fields);
             if (Object.keys(fields).length === 0) {
@@ -53,39 +58,33 @@ export default function PasswordScreen() {
 
     return (
         <FormScreen>
-            <Input
+            <PasswordInput
                 label="Mot de passe actuel"
                 value={currentPassword}
                 onChangeText={setCurrentPassword}
-                secureTextEntry
-                autoCapitalize="none"
                 autoComplete="current-password"
                 returnKeyType="next"
                 onSubmitEditing={() => newRef.current?.focus()}
                 error={fieldErrors.currentPassword}
                 editable={!loading}
             />
-            <Input
+            <PasswordInput
                 ref={newRef}
                 label="Nouveau mot de passe"
                 value={newPassword}
                 onChangeText={setNewPassword}
                 placeholder="8 caractères minimum"
-                secureTextEntry
-                autoCapitalize="none"
                 autoComplete="new-password"
                 returnKeyType="next"
                 onSubmitEditing={() => confirmRef.current?.focus()}
                 error={fieldErrors.newPassword}
                 editable={!loading}
             />
-            <Input
+            <PasswordInput
                 ref={confirmRef}
                 label="Confirme le nouveau mot de passe"
                 value={confirmation}
                 onChangeText={setConfirmation}
-                secureTextEntry
-                autoCapitalize="none"
                 autoComplete="new-password"
                 returnKeyType="done"
                 onSubmitEditing={handleSubmit}

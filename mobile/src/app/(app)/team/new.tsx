@@ -4,11 +4,15 @@ import { Text, type TextInputInstance } from "react-native";
 import Button from "../../../components/ui/Button";
 import FormScreen from "../../../components/ui/FormScreen";
 import Input from "../../../components/ui/Input";
+import PasswordInput from "../../../components/ui/PasswordInput";
+import { useToast } from "../../../components/ui/Toast";
 import { useCreateStaff } from "../../../hooks/useStaff";
 import { getErrorMessage, getFieldErrors } from "../../../lib/errors";
+import { hapticError, hapticSuccess } from "../../../lib/haptics";
 
 export default function NewStaffScreen() {
     const createStaff = useCreateStaff();
+    const toast = useToast();
     const [name, setName] = useState("");
     const [phone, setPhone] = useState("");
     const [password, setPassword] = useState("");
@@ -34,7 +38,14 @@ export default function NewStaffScreen() {
         setLocalError(null);
         createStaff.mutate(
             { name: name.trim(), phone: phone.trim(), password },
-            { onSuccess: () => router.back() }
+            {
+                onSuccess: (staff) => {
+                    hapticSuccess();
+                    toast(`${staff.name} a rejoint l'équipe`);
+                    router.back();
+                },
+                onError: hapticError,
+            }
         );
     };
 
@@ -63,14 +74,12 @@ export default function NewStaffScreen() {
                 error={fieldErrors.phone}
                 editable={!createStaff.isPending}
             />
-            <Input
+            <PasswordInput
                 ref={passwordRef}
                 label="Mot de passe provisoire"
                 value={password}
                 onChangeText={setPassword}
                 placeholder="8 caractères minimum"
-                secureTextEntry
-                autoCapitalize="none"
                 autoComplete="new-password"
                 returnKeyType="done"
                 onSubmitEditing={handleSubmit}

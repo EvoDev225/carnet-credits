@@ -1,14 +1,18 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import AmountInput from "../../../../components/ui/AmountInput";
 import Button from "../../../../components/ui/Button";
-import FilterChips from "../../../../components/ui/FilterChips";
 import FormScreen from "../../../../components/ui/FormScreen";
 import Input from "../../../../components/ui/Input";
+import SegmentedControl from "../../../../components/ui/SegmentedControl";
+import { useToast } from "../../../../components/ui/Toast";
 import { useAuth } from "../../../../context/AuthContext";
 import { useCreateTransaction, useCustomer } from "../../../../hooks/useCustomer";
 import { getErrorMessage } from "../../../../lib/errors";
-import { formatFcfa, formatNumber, parseAmount } from "../../../../lib/format";
+import { formatFcfa, formatSignedFcfa } from "../../../../lib/format";
+import { hapticError, hapticSuccess } from "../../../../lib/haptics";
+import { tabularNums } from "../../../../lib/theme";
 import type { TransactionType } from "../../../../lib/types";
 
 const MAX_AMOUNT = 100_000_000;
@@ -18,6 +22,7 @@ export default function OperationScreen() {
     const id = params.id;
     const { user } = useAuth();
     const isOwner = user?.role === "owner";
+    const toast = useToast();
     const customer = useCustomer(id);
     const createTransaction = useCreateTransaction(id);
 
@@ -30,12 +35,10 @@ export default function OperationScreen() {
     const balance = customer.data?.balance ?? 0;
     const isPayment = type === "PAYMENT";
 
-    const typeOptions: { value: TransactionType; label: string }[] = isOwner
-        ? [
-              { value: "DEBT", label: "Dette" },
-              { value: "PAYMENT", label: "Remboursement" },
-          ]
-        : [{ value: "DEBT", label: "Dette" }];
+    const typeOptions: { value: TransactionType; label: string }[] = [
+        { value: "DEBT", label: "Dette" },
+        { value: "PAYMENT", label: "Remboursement" },
+    ];
 
     const handleSubmit = () => {
         if (createTransaction.isPending) return;
@@ -55,8 +58,16 @@ export default function OperationScreen() {
         createTransaction.mutate(
             { type, amount, description: description.trim() || undefined },
             {
-                onSuccess: () => router.back(),
-                onError: (mutationError) => setError(getErrorMessage(mutationError)),
+                onSuccess: () => {
+                    hapticSuccess();
+                    toast(`${isPayment ? "Remboursement" : "Dette"} de ${formatSignedFcfa(amount, type)} enregistré${isPayment ? "" : "e"}`);
+                    router.back();
+                },
+                onError: (mutationError) => {
+                    hapticError();
+                    // 409 de l'API : le solde a changé entre-temps
+                    setError(getErrorMessage(mutationError));
+                },
             }
         );
     };
@@ -66,30 +77,42 @@ export default function OperationScreen() {
             {customer.data ? (
                 <View className="items-center">
                     <Text className="font-jakarta-bold text-lg text-navy">{customer.data.name}</Text>
-                    <Text className="font-jakarta text-sm text-muted">{`Solde actuel : ${formatFcfa(balance)}`}</Text>
+                    <Text className="font-jakarta text-sm text-muted" style={tabularNums}>
+                        {`Solde actuel : ${formatFcfa(balance)}`}
+                    </Text>
                 </View>
             ) : null}
 
-            <FilterChips options={typeOptions} value={type} onChange={setType} />
+            {isOwner ? (
+                <SegmentedControl
+                    options={typeOptions}
+                    value={type}
+                    onChange={(next) => {
+                        setType(next);
+                        setError(null);
+                    }}
+                    disabled={createTransaction.isPending}
+                />
+            ) : null}
 
-            <Input
-                label="Montant (FCFA)"
-                value={amount > 0 ? formatNumber(amount) : ""}
-                onChangeText={(text) => setAmount(parseAmount(text))}
-                placeholder="0"
-                keyboardType="number-pad"
-                autoFocus
+            <AmountInput
+                value={amount}
+                onChange={(next) => {
+                    setAmount(next);
+                    setError(null);
+                }}
+                label={isPayment ? "Montant remboursé" : "Montant de la dette"}
                 editable={!createTransaction.isPending}
-                style={{ fontVariant: ["tabular-nums"] }}
+                autoFocus
             />
 
             {isPayment && balance > 0 ? (
                 <Pressable
                     onPress={() => setAmount(balance)}
                     accessibilityRole="button"
-                    className="min-h-[44px] items-center justify-center self-start rounded-[10px] border border-line bg-white px-4 active:bg-avatar/40"
+                    className="min-h-[44px] items-center justify-center self-start rounded-chip border border-line bg-surface px-4 active:bg-avatar/40"
                 >
-                    <Text className="font-jakarta-semibold text-sm text-brand">
+                    <Text className="font-jakarta-semibold text-sm text-brand" style={tabularNums}>
                         {`Tout rembourser (${formatFcfa(balance)})`}
                     </Text>
                 </Pressable>
